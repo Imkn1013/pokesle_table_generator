@@ -1,0 +1,490 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      table{
+        width:clamp(100px,100%,1000px);
+      }
+      td{
+        font-size: clamp(5px, 1.6vw, 15px);
+        white-space: nowrap;
+      }
+      th{
+        font-size: clamp(5px, 1.2vw, 10px);
+        white-space: pre-line;
+      }
+      .lvinput {
+        display: none;
+      }
+      /* ラジオボタンがチェックされた時、その兄弟要素（~）を表示する */
+      #lvcustom:checked ~ #lvinput {
+        display: block;
+        margin-left: 20px;
+      }
+    </style>
+  </head>
+<body>
+  <h3>ポケモンスリープ厳選基準表メーカー</h3>
+  <p>ver-1.01</p>
+  <p>made by せな</p>
+  <p>更新:2026-5-3</p>
+  <p>評価基準と、育てる予定のレベルを入力してください。<br>
+  カスタム評価基準は準備中です。</p>
+    <details>
+  <summary>【不具合】</summary>
+    　食材とくいA食材数について、食材構成の関係であえてレベルを下げたほうがA食材取得数が増える場合は,
+    lv29やlv59に落としているのですが、サブスキルが解放されたまま計算されています。<br>
+    食材構成と設定レベルにより、<br>
+    ABXならlv50~74→1枠分,lv75~99→2枠分,lv100~→3枠分,<br>
+    AAXならlv75~99→1枠分,lv100~→2枠分　だけ<br>サブスキルの枠が本来より余計に増えていることに注意してください。<br>改善するためにサブスキルの順序を区別すると表が煩雑になることを考え、ひとまず現状を維持する方針です。<br>　</details>
+  <details>
+  <summary>出現確率について</summary>
+  　サブスキルの抽選は、メダルによる金色確定枠を金色から等確率で抽選した後、未出現のものから1つあたり(白:12.5、青:6、金:2)の重みに基づいた確率で計算しています。実際の抽選方法と異なる可能性がありますので注意してください。<br>　
+</details>
+  <details>
+  <summary>おてつだいボーナスの扱いについて</summary>
+    おてつだい時間のサブスキル補正は、<br>
+    　max( 0.65 , 1 - { (スピSの数)*0.07 + (スピMの数)*0.14 + (チーム全体のおてボの数)*0.05 } )<br>倍で、状況によって1倍から全員に1.076倍程度(実質1匹に約1.385倍)まで幅があり、他のポケモンが影響するため厳密な強さは計算できませんが、編成ポケモン全員が同様におてボを持っているとして計算(-0.25)しています。ただし、実際そのような状況は限定的で、多くの場合では他のポケモンへの効果量を擬似的に計算していると捉え、キャップは撤廃しました。本来キャップのかかるM+おてボ*5、S+M+おてボ*3以上という状況では過大評価になりますので注意してください。他の編成ポケモンが強ければ相対的におてボが強く、他の編成ポケモンが弱ければ相対的に弱くなることにも注意してください。<br>　
+  </details>
+  <fieldset>
+    <form id="preset">
+   <legend>評価基準</legend>
+   <div>
+    <input type="radio" id="kinomi" value="kinomi" name="preset" checked/>
+    <label for="kinomi">きのみとくい　いつ育エナジー</label>
+   </div>
+   <div>
+    <input type="radio" id="ingredients" value="ingredients" name="preset"/>
+    <label for="ingredients">食材とくい　A食材数</label>
+   </div>
+   <div>
+    <input type="radio" id="ingredients_AAA" value="ingredients_AAA" name="preset"/>
+    <label for="ingredients_AAA">食材とくい　A食材数(AAA固定)</label>
+   </div>
+   <div>
+    <input type="radio" id="skilltimes" value="skilltimes" name="preset"/>
+    <label for="skilltimes">スキル回数(天井無視)</label>
+   </div>
+   <div>
+    <input type="radio" id="custom" value="custom" name="preset"/>
+    <label for="custom">カスタム</label>
+  </div>
+   </div>
+      </form>
+  </fieldset>
+  <fieldset style="display:none;">
+    <form>
+      <input list="pokemon_name_list" type="text" id="pokemon_name" placeholder="ポケモン名を入力…"/>
+    </form>
+  </fieldset>
+  <datalist id="pokemon_name_list"></datalist>
+  <fieldset>
+    <form id="level">
+      <input type="radio" name="level" id="lv30" value="lv30"/>
+      <label for="lv30">lv30</label>
+      <input type="radio" name="level" id="lv50" value="lv50" checked/>
+      <label for="lv50">lv50</label>
+      <input type="radio" name="level" id="lv60" value="lv60"/>
+      <label for="lv60">lv60</label>
+      <input type="radio" name="level" id="lv75" value="lv75"/>
+      <label for="lv75">lv75</label>
+      <input type="radio" name="level" id="lv100" value="lv100"/>
+      <label for="lv100">lv100</label>
+      <br>
+      <input type="radio" name="level" id="lvcustom"/>
+      <label for="lvcustom">カスタム</label>
+      <input id="lvinput" class="lvinput" type="number" placeholder="数値を入力...">
+    </form>
+  </fieldset>
+  <table id="table" class="table"></table>
+  
+
+  
+  <button id=button>生成</button>
+  <script type="module">
+    
+    import data from "https://imkn1013.github.io/pokemonsleep_tool/pokemon_data.json" with {type:"json"};
+    
+    document.getElementById("pokemon_name_list").innerHTML
+      =data.map(text=>`<option value="${text.japanese}">`).join('');
+    
+    const toKatakana=str=>{//3041(ぁ)から3096(ゖ)の範囲
+      return str.replace(/[\u3041-\u3096]/g,match=>{
+        return String.fromCharCode(match.charCodeAt(0)+0x60);
+    });};
+    
+    document.getElementById("pokemon_name").addEventListener('input',e=>{
+      e.target.value =toKatakana(e.target.value);
+    });
+    
+    document.getElementById("lvinput").addEventListener('input',e=>{
+      document.getElementById("lvcustom").value="lv"+e.target.value;
+      console.log("lv"+e.target.value);
+    });
+    
+    const s={k:"きのみS",b:"おてボ",ex:"睡眠EXPボーナス",ge:"げんき回復ボーナス",
+      re:"リサーチEXPボーナス",kake:"ゆめのかけらボーナス",lvm:"スキルレベルM",
+      sm:"おてスピM",fm:"食材確率M",skm:"スキル確率M",syl:"最大所持数L",
+      sym:"最大所持数M",lvs:"スキルレベルS",ss:"おてスピS",fs:"食材確率S",
+      sks:"スキル確率S",sys:"最大所持数S"};
+    const ch={s:"おてスピ",f:"食材確率",sk:"スキル確率",
+      ge:"げんき回復量",ex:"EXP獲得量"};
+    const sub=Object.values(s);
+    const chara=Object.values(ch);
+    const sub_gold=[s.k,s.b,s.ex,s.ge,s.re,s.kake,s.lvm];
+    const sub_blue=[s.sm,s.fm,s.skm,s.syl,s.sym,s.lvs];
+    const sub_white=[s.ss,s.fs,s.sks,s.sys];
+    const ingpattern=[{"":9},{"AAA":1,"AAX":2,"ABA":2,"ABX":4},
+                      {"AAX":2,"AAB":1,"ABX":4,"ABB":2},{"AXX":6,"AXC":3},
+                      {"AAA":1,"AAB":1,"AAC":1,"ABA":2,"ABB":2,"ABC":2}];
+    //[スキルセット,性格セット,食材注目,とくい,評価関数]
+    //注目食材:[0:なし,1:A,2:B,3:C,4:複数]
+    //とくい:[0:きのみ,1:食材,2:スキル,3:オール]
+    //食材注目は出現率にのみ使用(スコアは別途計算)
+    const preset={"kinomi":[[s.k,s.b,s.sm,s.ss],[ch.s],0,0,
+                            arg=>kinominum(arg)/speed(arg)/2],
+                  "ingredients":[[s.b,s.fm,s.fs,s.sm,s.ss],[ch.f,ch.s],1,1,
+                                arg=>ingprob(arg)*ingmax_A(arg)/speed(arg)],
+                  "ingredients_AAA":[[s.b,s.fm,s.fs,s.sm,s.ss],[ch.f,ch.s],0,1,
+                                arg=>ingprob(arg)/speed(arg)],
+                  "skilltimes":[[s.b,s.skm,s.sks,s.sm,s.ss],[ch.sk,ch.s],0,2,
+                                arg=>skillprob(arg)/speed(arg)]
+                 };
+    let sub_putting;
+    let chara_putting;
+    let ing;
+    let func;
+    let wide;
+    let level;
+    let special;
+    const di=5;//表示桁数
+    
+    //計算セット
+    const fac=(n)=>{let res=1;for(let w=1;w<=n;w++) res*=w;return res;};
+    const bi=(n,k)=>fac(n)/(fac(k)*fac(n-k));
+    const perm=(n,k)=>fac(n)/fac(n-k);
+    const sum=(a,b)=>a.map((v,index)=>v+b[index]);
+    const differ=(a,b)=>a.map((v,index)=>v-b[index]);
+    const mult=(a,b)=>a.map((v,index)=>v*b[index]);
+    const mult_scalar=(a,b)=>a.map(v=>v*b);
+    const total=(a)=>a.reduce((r,c)=>r+c,0);
+    
+    const form=(num,width)=>num.toFixed(width-1).slice(0,width+1);
+    const normalize =(arr,length)=>{
+      const newarr=arr.concat();
+      while(newarr.length<length){newarr.push("-");}
+      return newarr;};
+    
+    const sort=(a,b)=>b[3]-a[3];//ソート関数
+    
+    const cache = new Map();//キャッシュ
+    const sleep = () => new Promise(resolve => setTimeout(resolve, 0));
+    // 一瞬ブラウザに制御を戻す
+    
+    const powerset = 
+     arry=>arry.reduce(
+       (repeet,current)=>repeet.concat(
+         repeet.map(val=>val.concat(current))
+       ), [[]] );//配列の冪集合
+    
+    const charaset=arry=> arry.concat([""])
+          .flatMap(val=>arry.concat([""]).map(val2=>[val,val2]))
+           .filter(arr=>arr[0]!==arr[1])
+            .concat([["",""]])
+             .filter(arr =>arry.length !== 5 || arr[0] !== "" && arr[1] !== "");
+    //性格組み合わせ
+    
+    const coloring=(arr,a,b,c,d)=>{
+      if(d!==undefined){
+        return arr.map((val)=>{
+          if(sub_gold.includes(val)) return a;
+          if(sub_blue.includes(val)) return b;
+          if(sub_white.includes(val)) return c;
+          return d;
+      })}
+      const color=[0,0,0];
+       arr.forEach(value=>{
+         if(sub_gold.includes(value)) color[0]++;
+         if(sub_blue.includes(value)) color[1]++;
+         if(sub_white.includes(value)) color[2]++;
+       });
+      return color;
+    };
+    
+    //スコア計算用関数
+    const kinominum=arr=>{
+      if(arr[0].includes(s.k)&&special%3==0) return 3;
+      if(arr[0].includes(s.k)||special%3==0) return 2;
+      return 1;};
+    const speed=arr=>{let a=1;
+      if(arr[0].includes(s.b)) a-=0.25;
+      if(arr[0].includes(s.sm)) a-=0.14;
+      if(arr[0].includes(s.ss)) a-=0.07;
+      //a=Math.max(a,0.65);
+      if(arr[1][0]==ch.s) a*=0.9;
+      if(arr[1][1]==ch.s) a*=1.075;
+      return a;};
+    const ingprob=arr=>{let a=1;
+      if(arr[0].includes(s.fm)) a+=0.36;
+      if(arr[0].includes(s.fs)) a+=0.18;
+      if(arr[1][0]==ch.f) a*=1.2;
+      if(arr[1][1]==ch.f) a*=0.8;
+      return a;};
+    const skillprob=arr=>{let a=1;
+      if(arr[0].includes(s.skm)) a+=0.36;
+      if(arr[0].includes(s.sks)) a+=0.18;
+      if(arr[1][0]==ch.sk) a*=1.2;
+      if(arr[1][1]==ch.sk) a*=0.8;
+      return a;};
+    const lv_speed=lv=>1-(lv-1)*0.002;
+    const ingnum=(arr,lv)=>{
+      const a=arr[2].split("");
+      const weight=special%2==1 ? [2,5,7] : [1,2,4];
+      const res=[weight[0],0,0];
+      if(lv<30) return mult_scalar(res,1/(lv_speed(lv)));
+      if(a[1]=="A") res[0]+=weight[1];
+      if(a[1]=="B") res[1]+=weight[1];
+      if(lv<60) return mult_scalar(res,1/(lv_speed(lv)*2));
+      if(a[2]=="A") res[0]+=weight[2];
+      if(a[2]=="B") res[1]+=weight[2];
+      if(a[2]=="C") res[2]+=weight[2];
+      return mult_scalar(res,1/(lv_speed(lv)*3));
+    };//X食材は無視 AAA以外はweightを調整
+    const ingmax_A=arr=>{
+      const a=[ingnum(arr,level)[0]];
+      if(30<=level) a.push(ingnum(arr,29)[0]);
+      if(60<=level) a.push(ingnum(arr,59)[0]);
+      return Math.max(...a);
+    };
+    
+    
+    const full_pool=[7,6,4];
+    const weight=[2,6,12.5];
+    const probability_calculate=(n,a,b,c)=>{
+    /*n:抽選枠数,a:注目スキル,b:出現スキル,c:確定枠数
+      出現スキル⊂注目スキル
+      出現スキル=:必須アイテム, 注目スキル∧¬出現スキル=:禁止アイテム, ¬注目スキル=:自由アイテム
+      禁止アイテムの確率は加算しないため基本無視
+      0:残り抽選数、1:箱の状態、2:必須アイテム、3:自由アイテム、4:確率、5:確定枠数*/
+      const state_first=[n,full_pool,b,differ(full_pool,a),1,c];
+      const update=(state)=>{
+        if(state[4]==0) return 0;
+        if(total(state[2])>state[0]) return 0;//失敗
+        if(state[0]==0&&total(state[2])==0) return state[4];//成功
+        const key = `${state[0]}|${state[1].join(',')}|
+          ${state[2].join(',')}|${state[3].join(',')}|${state[5]}`;
+        if (cache.has(key)) return cache.get(key)*state[4];
+        let branch_prob=0;
+        for(let i=2;i<4;i++){// 必須,自由を計算
+        if(state[5]==0){
+          state[i].forEach((value,index)=>{
+            if(value==0) return 0;
+            const newstate=state.map((val,id)=>id==0||id==4||id==5 ? val : [...val]);
+            newstate[0]--;
+            newstate[i][index]--;
+            newstate[1][index]--;
+            newstate[4]*=value*weight[index]/total(mult(state[1],weight));
+            branch_prob+=update(newstate);
+          });
+        }else{
+          const newstate=state.map((val,id)=>id==0||id==4||id==5 ? val : [...val]);
+          newstate[0]--;
+          newstate[i][0]--;
+          newstate[1][0]--;
+          newstate[4]*=state[i][0]/(state[1][0]);
+          newstate[5]--;
+          branch_prob+=update(newstate);
+        }
+        }
+        cache.set(key,branch_prob/state[4]);
+        return branch_prob;
+      };
+      const prob_total=update(state_first);
+      return prob_total;
+    };
+    
+    const probability=
+    async(arr,medal)=>{
+      await sleep();
+      const subprob_putting_num=coloring(sub_putting);
+      const subprob_num=coloring(arr[0]);
+      const subprob=probability_calculate(wide, subprob_putting_num, subprob_num,medal);
+     
+      const a=chara_putting.length;
+      let c=0;
+      if(arr[1][0]!=="") c++;
+      if(arr[1][1]!=="") c++;
+      const chara_prob=(()=>{
+        if(c==2) return 1/25;
+        if(c==1) return (5-a)/25;
+        if(c==0) return (a+(5-a)**2)/25;
+      })();
+      
+      const ing_prob=ingpattern[ing][arr[2]]/9;
+      
+      return subprob*chara_prob*ing_prob;
+    };
+    
+    
+    const getlogceil=(a,b)=>{
+      if(a>=1) return Infinity;
+      if(a<b) return 1;
+      return Math.ceil(Math.log(b)/Math.log(a)-1e-12);}
+    const appearline=(appear_probs,appear_line,priority,friendpoint)=>{
+      //_probs:メダル別合計出現率(array[number*4]),appear_line:x%出現(number),priority:メダル優先度(array[number*4])
+      //ex) (0.1,0.2,0.3,0.4,80,[2,1,0,3])
+      //priorityは最高個体値の出現確率に基づいて決めるとよい？
+      const _probs=appear_probs.map(_=>_/100);
+      const [_white,_bronze,_silver,_gold]=_probs;
+      let _medal=[8,30,60];
+      if(friendpoint>7) _medal=[8,20,30];
+      if(friendpoint>12) _medal=[8,15,25];
+      if(friendpoint>16) _medal=[8,10,20];
+      let _line=1-appear_line/100;
+      let times=0;
+      if((1-_white)**_medal[0]<_line) return getlogceil(1-_white,_line);
+      _line/=(1-_white)**_medal[0];
+      times+=_medal[0];
+      if((1-_bronze)**_medal[1]<_line) return getlogceil(1-_bronze,_line)+times;
+      _line/=(1-_bronze)**_medal[1];
+      times+=_medal[1];
+      const _firstof3=priority.indexOf(Math.min(...priority.slice(0,3)));
+      if((1-_probs[_firstof3])**_medal[2]<_line) return getlogceil(1-_probs[_firstof3],_line)+times;
+      _line/=(1-_probs[_firstof3])**_medal[2];
+      times+=_medal[2];
+      const _first=priority.indexOf(Math.min(...priority));
+      return getlogceil(1-_probs[_first],_line)+times;
+    };
+    
+    const maketable=(top,main,th_width,color)=>{
+      const newtable=document.createElement("table");
+      newtable.style.borderCollapse = "collapse";
+      newtable.border="2";
+      newtable.id="table";
+      
+      //見出し
+      for(let i=0;i<2;i++){
+        const newtr=document.createElement("tr");
+        newtable.appendChild(newtr);
+          top[i].forEach((value,index)=>{
+            const newth=document.createElement("th");
+            newtr.appendChild(newth);
+            const newtxt=document.createTextNode(value);
+            newth.appendChild(newtxt);
+              newth.colSpan=th_width[i][index];
+              if(i==0) newth.rowSpan=th_width[2][index];
+              newth.style.border = "2px solid black";
+      });};
+      
+      //内容
+      main.forEach((row,index)=>{
+        const newtr=document.createElement("tr");
+         newtable.appendChild(newtr);
+        row.forEach((value,idx)=>{
+          const newtd=document.createElement("td");
+          newtr.appendChild(newtd);
+          const newtxt=document.createTextNode(value);
+          newtd.appendChild(newtxt);
+            newtd.style.border = "1.5px solid black";
+            if(color[index][idx]) newtd.style.backgroundColor=color[index][idx];
+            const pla=idx-(wide+ing);
+            if(idx==wide) newtd.style.color="red";
+            if(idx==wide+1) newtd.style.color="blue";
+            if(pla==2) newtd.style.backgroundColor="#D7FFD4";
+            if(pla==5||pla==6) newtd.style.backgroundColor="#FDDAD4";
+            if(pla==7||pla==8) newtd.style.backgroundColor="lightcyan";
+            if(pla==9||pla==10) newtd.style.backgroundColor="#FDFAD4";
+        });
+      });
+      return newtable;
+    };
+    
+    const make=async function(){
+      const checked=document.getElementById("preset").elements["preset"].value;
+      level=Number(document.getElementById("level").elements["level"].value.slice(2));
+      wide=(()=>{
+        if(level<10) return 0; if(level<25) return 1;
+        if(level<50) return 2; if(level<75) return 3;
+        if(level<100) return 4; return 5;})();
+      //プリセット読み込み
+      sub_putting=preset[checked][0]; 
+      chara_putting=preset[checked][1];
+      ing=preset[checked][2];
+      special=preset[checked][3];
+      func=preset[checked][4];
+      //組み合わせリスト作成
+      const sublist=powerset(sub_putting).filter((arr)=>arr.length<=wide);
+      const charalist=charaset(chara_putting);
+      const statelist=sublist.flatMap(_sub=>charalist.map(_chara=>[_sub,_chara]))
+            .flatMap(_sub_chara=>Object.keys(ingpattern[ing]).map(_ing=>_sub_chara.concat(_ing)));
+      //sub,chara,ingの直積[[[sub1-1,sub1-2],[up1,down1],"AAA"],,,]
+      
+      //確率、スコア追加
+      const list=await Promise.all(statelist.map(async val=>{
+        const prob0=await probability(val,0);
+        const prob1=await probability(val,1);
+        const prob2=await probability(val,2);
+        const prob3=await probability(val,3);
+        return val.concat([func(val)])
+         .concat(prob0*100).concat(prob1*100)
+         .concat(prob2*100).concat(prob3*100);
+      }));
+      /*
+      const list=[];
+      for(const val of statelist){
+        const _prob0=await probability(val,0);
+        const _prob1=await probability(val,1);
+        const _prob2=await probability(val,2);
+        const _prob3=await probability(val,3);
+        const _functioned=await func(val);
+        list.push(val.concat([_functioned,_prob0*100,_prob1*100,_prob2*100,_prob3*100]));
+      }//*/
+      
+      
+      const sorted=list.toSorted(sort);
+      
+      const probs=sorted.reduce((repeet,current)=>{
+        return repeet.map((val,index)=>
+                 val.concat(val[val.length-1]+current[4+index]));
+      },[[0],[0],[0],[0]]);
+      
+      //合計確率追加
+      const list2=sorted.map((val,index)=>
+                val.concat(probs.reduce((repeet,current)=>
+                            repeet.concat(current[index+1]),[])));
+      
+      const medal_priority=ing==0 ? [3,1,0,2] : [1,0,2,3];
+      const appearline_list = [];
+      for (const val of list2){
+        const _res =await appearline([val[8],val[9],val[10],val[11]],80,medal_priority,5);
+        appearline_list.push(_res.toString());
+      }
+      
+      const latest=list2.map((val,index)=>
+        [...normalize(val[0],wide),...val[1],val[3],val[4],val[8],
+         val[5],val[9],val[6],val[10],val[7],val[11],appearline_list[index]]
+         .map(val2=>{if(typeof val2=="number") return form(val2,di);return val2;}))
+      const submit=ing==0 ? latest :latest.map((val,index)=>val.toSpliced(wide+2,0,list2[index][2]));
+      
+      //0:サブスキル,1:せいかく,2:食材構成,3:スコア,
+      //4:確率0,5:確率1,6:確率2,7:確率3,
+      //8:確率計0,9:確率計1,10:確率計2,11:確率計3
+      const thname1=["サブスキル構成","せいかく","つよさ\n倍率","メダル別出現率/出現率計(%)","80%出現\nライン"];
+      if(ing!==0) thname1.splice(2,0,"食材構成");
+      const thname2=["↑","↓","なし","合計","銅","合計","銀","合計","金","合計"];
+      const thwidth1=ing==0 ? [wide,2,1,8,1] : [wide,2,1,1,8,1];
+      const thwidth2=[1,1,1,1,1,1,1,1,1,1];
+      const thheight=ing==0 ? [2,1,2,1,2] :[2,1,2,2,1,2];
+      const colorset=list2.map(val=>coloring(
+        normalize(val[0],wide),"#FDF6D4","#C8FFFF","aliceblue","whitesmoke"));
+      
+      document.getElementById("table").remove();
+      document.body.appendChild(maketable([thname1,thname2],submit,[thwidth1,thwidth2,thheight],colorset));
+    };
+    
+    
+    document.getElementById("button").addEventListener('click',make);
+    
+  </script>
+</body>
+</html>
