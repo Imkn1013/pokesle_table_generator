@@ -143,14 +143,14 @@
     //注目食材:[0:なし,1:A,2:B,3:C,4:複数]
     //とくい:[0:きのみ,1:食材,2:スキル,3:オール]
     //食材注目は出現率にのみ使用(スコアは別途計算)
-    const preset={"kinomi":[[s.k,s.b,s.sm,s.ss],[ch.s],0,0,
-                            arg=>cal.kinominum(arg)/cal.speed(arg)/2],
-                  "ingredients":[[s.b,s.fm,s.fs,s.sm,s.ss],[ch.f,ch.s],1,1,
-                                arg=>cal.ingprob(arg)*cal.ingmax_A(arg)/cal.speed(arg)],
-                  "ingredients_AAA":[[s.b,s.fm,s.fs,s.sm,s.ss],[ch.f,ch.s],0,1,
-                                arg=>cal.ingprob(arg)/cal.speed(arg)],
-                  "skilltimes":[[s.b,s.skm,s.sks,s.sm,s.ss],[ch.sk,ch.s],0,2,
-                                arg=>cal.skillprob(arg)/cal.speed(arg)]
+    const preset={"kinomi":{sub:[s.k,s.b,s.sm,s.ss], chara:[ch.s], ing:0, special:0, priority:[3,2,0,1],
+                            func:arg=>cal.kinominum(arg)/cal.speed(arg)/2},
+                  "ingredients":{sub:[s.b,s.fm,s.fs,s.sm,s.ss], chara:[ch.f,ch.s], ing:1, special:1, priority:[1,0,2,3],
+                                func:arg=>cal.ingprob(arg)*cal.ingmax_A(arg)/cal.speed(arg)},
+                  "ingredients_AAA":{sub:[s.b,s.fm,s.fs,s.sm,s.ss], chara:[ch.f,ch.s], ing:0, special:1, priority:[1,0,2,3],
+                                func:arg=>cal.ingprob(arg)/cal.speed(arg)},
+                  "skilltimes":{sub:[s.b,s.skm,s.sks,s.sm,s.ss], chara:[ch.sk,ch.s], ing:0, special:2, priority:[1,0,2,3],
+                                func:arg=>cal.skillprob(arg)/cal.speed(arg)}
                  };
     //const 
     let sub_putting;
@@ -160,6 +160,7 @@
     let wide;
     let level;
     let special;
+    let medal_priority;
     const di=5;//表示桁数
     
     //計算セット
@@ -343,11 +344,12 @@
         if(level<50) return 2; if(level<75) return 3;
         if(level<100) return 4; return 5;})();
       //プリセット読み込み
-      sub_putting=preset[checked][0]; 
-      chara_putting=preset[checked][1];
-      ing=preset[checked][2];
-      special=preset[checked][3];
-      func=preset[checked][4];
+      sub_putting=preset[checked]["sub"]; 
+      chara_putting=preset[checked]["chara"];
+      ing=preset[checked]["ing"];
+      special=preset[checked]["special"];
+      func=preset[checked]["func"];
+      medal_priority=preset[checked]["priority"];
       //組み合わせリスト作成
       const sublist=powerset(sub_putting).filter((arr)=>arr.length<=wide);
       const charalist=charaset(chara_putting);
@@ -389,7 +391,7 @@
                 val.concat(probs.reduce((repeet,current)=>
                             repeet.concat(current[index+1]),[])));
       
-      const medal_priority=ing==0 ? [3,1,0,2] : [1,0,2,3];
+      //const medal_priority=ing==0 ? [3,1,0,2] : [1,0,2,3];
       const appearline_list = [];
       for (const val of list2){
         const _res =await appearline([val[8],val[9],val[10],val[11]],80,medal_priority,5);
